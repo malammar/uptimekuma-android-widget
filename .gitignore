@@ -1,0 +1,24 @@
+# Gradle
+.gradle/
+build/
+**/build/
+
+# Local configuration (contains SDK path and signing credentials)
+local.properties
+
+# Signing keys — never commit these
+*.jks
+*.keystore
+upload-cert.pem
+
+# Android Studio / IntelliJ
+*.iml
+.idea/
+*.DS_Store
+
+# Generated APK/AAB artifacts
+*.apk
+*.aab
+
+# Screenshots (large binaries, not source)
+screenshots/
