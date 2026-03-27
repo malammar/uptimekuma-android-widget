@@ -47,21 +47,6 @@ sdk.dir=/path/to/your/Android/Sdk
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-### Release build (signed AAB)
-
-Add signing config to `local.properties`:
-```properties
-upload.storeFile=../upload-key.jks
-upload.storePassword=your_store_password
-upload.keyAlias=upload
-upload.keyPassword=your_key_password
-```
-
-```bash
-./gradlew bundleRelease
-# Output: app/build/outputs/bundle/release/app-release.aab
-```
-
 ## Adding the widget
 
 1. Long-press your home screen
