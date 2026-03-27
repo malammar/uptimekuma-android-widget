@@ -1,6 +1,13 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+}
+
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) load(f.inputStream())
 }
 
 android {
@@ -13,11 +20,6 @@ android {
         targetSdk = 35
         versionCode = 2
         versionName = "1.1"
-    }
-
-    val localProps = java.util.Properties().apply {
-        val f = rootProject.file("local.properties")
-        if (f.exists()) load(f.inputStream())
     }
 
     signingConfigs {
