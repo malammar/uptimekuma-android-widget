@@ -2,6 +2,19 @@
 
 A native Android home screen widget that displays monitor statuses from an [Uptime Kuma](https://github.com/louislam/uptime-kuma) public status page. No account or authentication required — works with any publicly accessible status page.
 
+## Screenshots
+
+<a href="https://github.com/user-attachments/assets/87ec5094-8e83-40b0-b64b-387cbe85a9e4"><img
+src="https://github.com/user-attachments/assets/87ec5094-8e83-40b0-b64b-387cbe85a9e4" width="300"></a>
+<a href="https://github.com/user-attachments/assets/4d171a0a-61a2-4786-8aea-746fae39df25"><img
+src="https://github.com/user-attachments/assets/4d171a0a-61a2-4786-8aea-746fae39df25" width="300"></a>
+<a href="https://github.com/user-attachments/assets/1991e20b-bebf-40eb-af23-453e14dc3d8c"><img
+src="https://github.com/user-attachments/assets/1991e20b-bebf-40eb-af23-453e14dc3d8c" width="300"></a>
+<a href="https://github.com/user-attachments/assets/2bfebdef-d567-48d0-91bd-79db467080ee"><img
+src="https://github.com/user-attachments/assets/2bfebdef-d567-48d0-91bd-79db467080ee" width="300"></a>
+<a href="https://github.com/user-attachments/assets/3e572183-14f0-44ac-b868-8c92a02d4505"><img
+src="https://github.com/user-attachments/assets/3e572183-14f0-44ac-b868-8c92a02d4505" width="300"></a>
+
 ## Features
 
 - Grouped monitors matching your status page layout
