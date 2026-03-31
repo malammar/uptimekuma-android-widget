@@ -6,7 +6,7 @@
     <string name="loading">Loading…</string>
     <string name="error_loading">Failed to load</string>
     <string name="hint_hostname">https://uptime-kuma.example.com</string>
-    <string name="hint_slug">default</string>
+    <string name="hint_slug">slug  —  or paste full status page URL</string>
     <string name="label_profiles">Instances</string>
     <string name="label_add_profile">Add Instance</string>
     <string name="label_basic_auth">Enable Basic Auth</string>

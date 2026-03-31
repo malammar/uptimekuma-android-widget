@@ -33,25 +33,11 @@ object Prefs {
         val idx = list.indexOfFirst { it.id == profile.id }
         if (idx >= 0) list[idx] = profile else list.add(profile)
         saveProfiles(ctx, list)
-        // Clear any cached slug so a changed hostname re-triggers discovery.
-        clearCachedSlug(ctx, profile.id)
     }
 
     fun deleteProfile(ctx: Context, id: String) {
         saveProfiles(ctx, getProfiles(ctx).filter { it.id != id })
-        clearCachedSlug(ctx, id)
     }
-
-    // ── Auto-discovered slug cache ─────────────────────────────────────────────
-
-    fun getCachedSlug(ctx: Context, profileId: String): String? =
-        prefs(ctx).getString("slug_$profileId", null)
-
-    fun setCachedSlug(ctx: Context, profileId: String, slug: String) =
-        prefs(ctx).edit().putString("slug_$profileId", slug).apply()
-
-    private fun clearCachedSlug(ctx: Context, profileId: String) =
-        prefs(ctx).edit().remove("slug_$profileId").apply()
 
     // ── Widget ↔ Profile mapping ───────────────────────────────────────────────
 
@@ -71,6 +57,7 @@ object Prefs {
             .remove("footer_bg_$appWidgetId")
             .remove("font_color_$appWidgetId")
             .remove("text_scale_$appWidgetId")
+            .remove("show_group_monitors_$appWidgetId")
             .apply()
     }
 
@@ -107,6 +94,11 @@ object Prefs {
         prefs(ctx).getInt("font_color_$appWidgetId", 0)
     fun setWidgetFontColor(ctx: Context, appWidgetId: Int, v: Int) =
         prefs(ctx).edit().putInt("font_color_$appWidgetId", v).apply()
+
+    fun getWidgetShowGroupMonitors(ctx: Context, appWidgetId: Int): Boolean =
+        prefs(ctx).getBoolean("show_group_monitors_$appWidgetId", false)
+    fun setWidgetShowGroupMonitors(ctx: Context, appWidgetId: Int, v: Boolean) =
+        prefs(ctx).edit().putBoolean("show_group_monitors_$appWidgetId", v).apply()
 
     // stored as integer percent: 85, 100, 120, 140
     fun getWidgetTextScalePct(ctx: Context, appWidgetId: Int): Int =

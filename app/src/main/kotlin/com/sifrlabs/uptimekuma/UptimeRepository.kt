@@ -3,27 +3,18 @@ package com.sifrlabs.uptimekuma
 import android.content.Context
 import android.net.ConnectivityManager
 import android.util.Base64
-import android.util.Log
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
 class UptimeRepository(private val context: Context) {
 
-    private companion object {
-        const val TAG = "UptimeRepository"
-    }
-
     private val connectivityManager =
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
-    fun fetchGroups(profile: Profile): List<MonitorGroup> {
+    fun fetchGroups(profile: Profile, showGroupMonitors: Boolean = false): List<MonitorGroup> {
         val hostname = profile.hostname
-        val slug     = when {
-            profile.slug.isNotEmpty() -> profile.slug
-            else -> Prefs.getCachedSlug(context, profile.id)
-                ?: discoverSlug(profile).also { Prefs.setCachedSlug(context, profile.id, it) }
-        }
+        val slug     = profile.slug.ifEmpty { "default" }
 
         val configBody    = get("$hostname/api/status-page/$slug", profile)
         val heartbeatBody = get("$hostname/api/status-page/heartbeat/$slug", profile)
@@ -56,7 +47,7 @@ class UptimeRepository(private val context: Context) {
             val monitors   = mutableListOf<MonitorStatus>()
             for (j in 0 until monitorList.length()) {
                 val m = monitorList.getJSONObject(j)
-                if (m.optString("type", "") == "group" && !profile.showGroupMonitors) continue
+                if (m.optString("type", "") == "group" && !showGroupMonitors) continue
                 val id   = m.getInt("id")
                 val data = monitorData[id] ?: continue
                 monitors.add(MonitorStatus(id, m.getString("name"), data.status, data.uptimePct, data.history))
@@ -79,39 +70,8 @@ class UptimeRepository(private val context: Context) {
         return groups
     }
 
-    // Fetches the root page and extracts the status-page slug from the HTML.
-    // Uptime Kuma inlines the slug in the manifest <link> href and window.preloadData.
-    // Falls back to "default" if nothing is found or the request fails.
-    private fun discoverSlug(profile: Profile): String {
-        return try {
-            val html = getHtml("${profile.hostname}/", profile)
-            listOf(
-                // Most reliable: <link rel="manifest" href="/api/status-page/SLUG/manifest.json">
-                Regex("""/api/status-page/([A-Za-z0-9][A-Za-z0-9_-]{0,99})/manifest\.json"""),
-                // window.preloadData = {'config':{'slug':'SLUG',...
-                Regex("""'slug'\s*:\s*'([^']+)'"""),
-                Regex(""""slug"\s*:\s*"([^"]+)""""),
-            ).firstNotNullOfOrNull { regex ->
-                regex.find(html)?.groupValues?.getOrNull(1)?.takeIf { it.isNotEmpty() }
-            } ?: "default"
-        } catch (e: Exception) {
-            Log.w(TAG, "Slug discovery failed for '${profile.hostname}': ${e.message}")
-            "default"
-        }
-    }
-
     private fun get(url: String, profile: Profile): String =
         openConn(url, profile, "application/json").let { conn ->
-            try { conn.inputStream.bufferedReader().readText() } finally { conn.disconnect() }
-        }
-
-    // Used for slug discovery — requests HTML with a browser User-Agent so servers
-    // don't block the request or return an error page.
-    private fun getHtml(url: String, profile: Profile): String =
-        openConn(url, profile, "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8").apply {
-            setRequestProperty("User-Agent",
-                "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36")
-        }.let { conn ->
             try { conn.inputStream.bufferedReader().readText() } finally { conn.disconnect() }
         }
 
