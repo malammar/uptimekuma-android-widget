@@ -4,16 +4,15 @@ A native Android home screen widget that displays monitor statuses from an [Upti
 
 ## Screenshots
 
-<a href="https://github.com/user-attachments/assets/87ec5094-8e83-40b0-b64b-387cbe85a9e4"><img
-src="https://github.com/user-attachments/assets/87ec5094-8e83-40b0-b64b-387cbe85a9e4" width="300"></a>
-<a href="https://github.com/user-attachments/assets/4d171a0a-61a2-4786-8aea-746fae39df25"><img
-src="https://github.com/user-attachments/assets/4d171a0a-61a2-4786-8aea-746fae39df25" width="300"></a>
-<a href="https://github.com/user-attachments/assets/1991e20b-bebf-40eb-af23-453e14dc3d8c"><img
-src="https://github.com/user-attachments/assets/1991e20b-bebf-40eb-af23-453e14dc3d8c" width="300"></a>
-<a href="https://github.com/user-attachments/assets/2bfebdef-d567-48d0-91bd-79db467080ee"><img
-src="https://github.com/user-attachments/assets/2bfebdef-d567-48d0-91bd-79db467080ee" width="300"></a>
-<a href="https://github.com/user-attachments/assets/3e572183-14f0-44ac-b868-8c92a02d4505"><img
-src="https://github.com/user-attachments/assets/3e572183-14f0-44ac-b868-8c92a02d4505" width="300"></a>
+<img src="https://github.com/user-attachments/assets/4594569e-b732-4929-ad23-f1437335fe79" width="200" />
+<img src="https://github.com/user-attachments/assets/1432c3f9-b383-48a8-9e7c-cadcddeaa6c9" width="200" />
+<img src="https://github.com/user-attachments/assets/6015051d-7ba5-4aab-9bff-9caafcccdf13" width="200" />
+<img src="https://github.com/user-attachments/assets/aabe227e-daad-4839-bcde-742828163799" width="200" />
+<img src="https://github.com/user-attachments/assets/07a34fe1-fa54-4c20-af49-1aaa7f301b12" width="200" />
+<img src="https://github.com/user-attachments/assets/148009e9-89df-4a55-892f-de8a67c22d89" width="200" />
+<img src="https://github.com/user-attachments/assets/2335144c-ec1b-45e1-83fb-ceff9f948e8e" width="200" />
+<img src="https://github.com/user-attachments/assets/649391e3-25a2-4b5c-a77e-bc192363a9d8" width="200" />
+<img src="https://github.com/user-attachments/assets/05fd6cbe-dd83-4182-9b6d-89907e083823" width="200" />
 
 ## Features
 
