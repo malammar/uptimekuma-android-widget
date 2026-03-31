@@ -22,3 +22,6 @@ upload-cert.pem
 
 # Screenshots (large binaries, not source)
 screenshots/
+
+# Codebase index cache
+.codebase-index-cache.pkl

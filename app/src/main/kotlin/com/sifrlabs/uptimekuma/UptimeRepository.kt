@@ -2,28 +2,37 @@ package com.sifrlabs.uptimekuma
 
 import android.content.Context
 import android.net.ConnectivityManager
+import android.util.Base64
+import android.util.Log
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
 class UptimeRepository(private val context: Context) {
 
+    private companion object {
+        const val TAG = "UptimeRepository"
+    }
+
     private val connectivityManager =
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
-    fun fetchGroups(): List<MonitorGroup> {
-        val hostname = Prefs.hostname(context)
-        val slug = Prefs.slug(context)
+    fun fetchGroups(profile: Profile): List<MonitorGroup> {
+        val hostname = profile.hostname
+        val slug     = when {
+            profile.slug.isNotEmpty() -> profile.slug
+            else -> Prefs.getCachedSlug(context, profile.id)
+                ?: discoverSlug(profile).also { Prefs.setCachedSlug(context, profile.id, it) }
+        }
 
-        val configBody = get("$hostname/api/status-page/$slug")
-        val heartbeatBody = get("$hostname/api/status-page/heartbeat/$slug")
+        val configBody    = get("$hostname/api/status-page/$slug", profile)
+        val heartbeatBody = get("$hostname/api/status-page/heartbeat/$slug", profile)
 
-        // Build per-monitor data from heartbeat response
         data class MonitorData(val status: Int, val uptimePct: Float, val history: List<Int>)
         val monitorData = HashMap<Int, MonitorData>()
         val heartbeatRoot = JSONObject(heartbeatBody)
         val heartbeatList = heartbeatRoot.getJSONObject("heartbeatList")
-        val uptimeList = heartbeatRoot.optJSONObject("uptimeList")
+        val uptimeList    = heartbeatRoot.optJSONObject("uptimeList")
 
         val keys = heartbeatList.keys()
         while (keys.hasNext()) {
@@ -31,49 +40,95 @@ class UptimeRepository(private val context: Context) {
             val arr = heartbeatList.getJSONArray(key)
             if (arr.length() == 0) continue
             val history = (0 until arr.length()).map { arr.getJSONObject(it).getInt("status") }
-            // Use pre-calculated 24h uptime from uptimeList (fraction 0–1), fall back to computed
             val uptimePct = uptimeList?.optDouble("${key}_24", -1.0)
                 ?.takeIf { it >= 0 }
                 ?.let { (it * 100).toFloat() }
                 ?: (history.count { it == MonitorStatus.STATUS_UP } * 100f / history.size)
-            val lastStatus = history.last()
-            monitorData[key.toInt()] = MonitorData(lastStatus, uptimePct, history)
+            monitorData[key.toInt()] = MonitorData(history.last(), uptimePct, history)
         }
 
-        // Build grouped list preserving publicGroupList order
         val groups = mutableListOf<MonitorGroup>()
         val publicGroupList = JSONObject(configBody).getJSONArray("publicGroupList")
         for (i in 0 until publicGroupList.length()) {
-            val group = publicGroupList.getJSONObject(i)
-            val groupName = group.getString("name")
+            val group      = publicGroupList.getJSONObject(i)
+            val groupName  = group.getString("name")
             val monitorList = group.optJSONArray("monitorList") ?: continue
-            val monitors = mutableListOf<MonitorStatus>()
+            val monitors   = mutableListOf<MonitorStatus>()
             for (j in 0 until monitorList.length()) {
                 val m = monitorList.getJSONObject(j)
-                if (m.optString("type", "") == "group") continue
-                val id = m.getInt("id")
+                if (m.optString("type", "") == "group" && !profile.showGroupMonitors) continue
+                val id   = m.getInt("id")
                 val data = monitorData[id] ?: continue
                 monitors.add(MonitorStatus(id, m.getString("name"), data.status, data.uptimePct, data.history))
             }
-            if (monitors.isNotEmpty()) groups.add(MonitorGroup(groupName, monitors))
+            if (monitors.isNotEmpty()) {
+                val avgPct = monitors.map { it.uptimePct }.average().toFloat()
+                val minLen = monitors.minOf { it.history.size }
+                val aggHistory = (0 until minLen).map { i ->
+                    val statuses = monitors.map { it.history[i] }
+                    when {
+                        statuses.any { it == MonitorStatus.STATUS_DOWN }        -> MonitorStatus.STATUS_DOWN
+                        statuses.any { it == MonitorStatus.STATUS_PENDING }     -> MonitorStatus.STATUS_PENDING
+                        statuses.any { it == MonitorStatus.STATUS_MAINTENANCE } -> MonitorStatus.STATUS_MAINTENANCE
+                        else                                                    -> MonitorStatus.STATUS_UP
+                    }
+                }
+                groups.add(MonitorGroup(groupName, monitors, avgPct, aggHistory))
+            }
         }
         return groups
     }
 
-    private fun get(url: String): String {
-        // Explicitly use the active network to avoid OxygenOS background DNS restrictions
+    // Fetches the root page and extracts the status-page slug from the HTML.
+    // Uptime Kuma inlines the slug in the manifest <link> href and window.preloadData.
+    // Falls back to "default" if nothing is found or the request fails.
+    private fun discoverSlug(profile: Profile): String {
+        return try {
+            val html = getHtml("${profile.hostname}/", profile)
+            listOf(
+                // Most reliable: <link rel="manifest" href="/api/status-page/SLUG/manifest.json">
+                Regex("""/api/status-page/([A-Za-z0-9][A-Za-z0-9_-]{0,99})/manifest\.json"""),
+                // window.preloadData = {'config':{'slug':'SLUG',...
+                Regex("""'slug'\s*:\s*'([^']+)'"""),
+                Regex(""""slug"\s*:\s*"([^"]+)""""),
+            ).firstNotNullOfOrNull { regex ->
+                regex.find(html)?.groupValues?.getOrNull(1)?.takeIf { it.isNotEmpty() }
+            } ?: "default"
+        } catch (e: Exception) {
+            Log.w(TAG, "Slug discovery failed for '${profile.hostname}': ${e.message}")
+            "default"
+        }
+    }
+
+    private fun get(url: String, profile: Profile): String =
+        openConn(url, profile, "application/json").let { conn ->
+            try { conn.inputStream.bufferedReader().readText() } finally { conn.disconnect() }
+        }
+
+    // Used for slug discovery — requests HTML with a browser User-Agent so servers
+    // don't block the request or return an error page.
+    private fun getHtml(url: String, profile: Profile): String =
+        openConn(url, profile, "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8").apply {
+            setRequestProperty("User-Agent",
+                "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36")
+        }.let { conn ->
+            try { conn.inputStream.bufferedReader().readText() } finally { conn.disconnect() }
+        }
+
+    private fun openConn(url: String, profile: Profile, accept: String): HttpURLConnection {
         val network = connectivityManager.activeNetwork
         val conn = (if (network != null) network.openConnection(URL(url))
                     else URL(url).openConnection()) as HttpURLConnection
         conn.connectTimeout = 10_000
-        conn.readTimeout = 15_000
-        conn.requestMethod = "GET"
-        conn.setRequestProperty("Accept", "application/json")
+        conn.readTimeout    = 15_000
+        conn.requestMethod  = "GET"
+        conn.setRequestProperty("Accept", accept)
         conn.setRequestProperty("Connection", "close")
-        return try {
-            conn.inputStream.bufferedReader().readText()
-        } finally {
-            conn.disconnect()
+        if (profile.authEnabled && profile.username.isNotEmpty()) {
+            val credentials = "${profile.username}:${profile.password}"
+            val encoded = Base64.encodeToString(credentials.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+            conn.setRequestProperty("Authorization", "Basic $encoded")
         }
+        return conn
     }
 }
