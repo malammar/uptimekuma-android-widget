@@ -50,7 +50,8 @@ class WidgetUpdateService : Service() {
                 for (attempt in 1..3) {
                     try {
                         Log.d(TAG, "Fetching profile '${profile.name}' (attempt $attempt)")
-                        val groups = UptimeRepository(this).fetchGroups(profile)
+                        val showGroupMonitors = widgetIds.any { Prefs.getWidgetShowGroupMonitors(this, it) }
+                        val groups = UptimeRepository(this).fetchGroups(profile, showGroupMonitors)
                         val json   = groupsToJson(groups)
                         widgetIds.forEach { Prefs.saveCachedGroups(this, it, json) }
                         widgetIds.toIntArray().let { ids ->

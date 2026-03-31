@@ -9,15 +9,14 @@ import org.junit.runner.RunWith
 class ProfileTest {
 
     private val sample = Profile(
-        id                = "test-id-123",
-        name              = "Home Lab",
-        hostname          = "https://uptime.example.com",
-        slug              = "home",
-        intervalMinutes   = 10,
-        authEnabled       = true,
-        username          = "admin",
-        password          = "secret",
-        showGroupMonitors = true
+        id              = "test-id-123",
+        name            = "Home Lab",
+        hostname        = "https://uptime.example.com",
+        slug            = "home",
+        intervalMinutes = 10,
+        authEnabled     = true,
+        username        = "admin",
+        password        = "secret"
     )
 
     @Test
@@ -39,15 +38,6 @@ class ProfileTest {
         assertFalse(p.authEnabled)
         assertEquals("", p.username)
         assertEquals("", p.password)
-        assertFalse(p.showGroupMonitors)
-    }
-
-    @Test
-    fun fromJson_showGroupMonitors_roundTrip() {
-        val on  = sample.copy(showGroupMonitors = true)
-        val off = sample.copy(showGroupMonitors = false)
-        assertTrue(Profile.fromJson(Profile.toJson(on)).showGroupMonitors)
-        assertFalse(Profile.fromJson(Profile.toJson(off)).showGroupMonitors)
     }
 
     @Test

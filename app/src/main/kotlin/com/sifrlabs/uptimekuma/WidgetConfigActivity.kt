@@ -30,8 +30,8 @@ class WidgetConfigActivity : Activity() {
         0x0A1628 to "Blue", 0x1C1C1C to "Charcoal", 0x0D1F12 to "Forest",
     )
     private val lightBgPresets = listOf(
-        0xFFFFFF to "White", 0xF2F6FA to "Silver", 0xFFF8F0 to "Warm",
-        0xF0F5FF to "Sky",   0xF5F5F5 to "Grey",   0xF0FFF4 to "Mint",
+        0xFFFFFF to "White", 0xE3F2FD to "Blue",  0xEDE7F6 to "Purple",
+        0xFCE4EC to "Rose",  0xFFF8E1 to "Amber", 0xE0F2F1 to "Teal",
     )
     private val darkFontPresets  = listOf(0xFFFFFF, 0xB0BEC5, 0xE0E0E0, 0x212121, 0xFFB300, 0x4DB6AC)
     private val lightFontPresets = listOf(0x1A1A2E, 0x212121, 0x607080, 0x000000, 0x8B0000, 0x1B5E20)
@@ -40,13 +40,14 @@ class WidgetConfigActivity : Activity() {
     private val bgPresets         get() = if (effectiveDarkMode) darkBgPresets else lightBgPresets
     private val fontPresets       get() = if (effectiveDarkMode) darkFontPresets else lightFontPresets
 
-    private var selectedBgRgb: Int     = 0x1A1A2E
+    private var selectedBgRgb: Int     = 0   // 0 = auto (first preset of current theme)
     private var bgOpacityPct: Int      = 80
     private var widgetTheme: Int       = 2    // 0=Dark, 1=Light, 2=System
     private var selectedHeaderRgb: Int = 0   // 0 = auto
     private var selectedFooterRgb: Int = 0   // 0 = auto
     private var selectedFontRgb: Int   = 0   // 0 = auto
     private var textScalePct: Int      = 100  // 100 = 1.0x
+    private var showGroupMonitors: Boolean = false
 
     // ── Theme ──────────────────────────────────────────────────────────────────
 
@@ -80,15 +81,16 @@ class WidgetConfigActivity : Activity() {
         // Pre-populate from existing widget settings (edit mode)
         selectedProfileId = Prefs.getProfileIdForWidget(this, appWidgetId)
         isExistingWidget  = selectedProfileId != null
+        widgetTheme       = Prefs.getWidgetTheme(this, appWidgetId)
         val storedColor   = Prefs.getWidgetBgColor(this, appWidgetId)
         val storedRgb     = storedColor and 0x00FFFFFF
         if (bgPresets.any { it.first == storedRgb }) selectedBgRgb = storedRgb
         bgOpacityPct = (storedColor ushr 24) * 100 / 255
-        widgetTheme       = Prefs.getWidgetTheme(this, appWidgetId)
         selectedHeaderRgb = Prefs.getWidgetHeaderBg(this, appWidgetId).let { if (it == 0) 0 else it and 0x00FFFFFF }
         selectedFooterRgb = Prefs.getWidgetFooterBg(this, appWidgetId).let { if (it == 0) 0 else it and 0x00FFFFFF }
         selectedFontRgb   = Prefs.getWidgetFontColor(this, appWidgetId).let { if (it == 0) 0 else it and 0x00FFFFFF }
         textScalePct      = Prefs.getWidgetTextScalePct(this, appWidgetId)
+        showGroupMonitors = Prefs.getWidgetShowGroupMonitors(this, appWidgetId)
 
         val p = dp(20)
         val scroll = ScrollView(this).apply { isFillViewport = true }
@@ -228,54 +230,26 @@ class WidgetConfigActivity : Activity() {
         themeSpinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: android.widget.AdapterView<*>, view: android.view.View?, pos: Int, id: Long) {
                 val newTheme = when (pos) { 1 -> 0; 2 -> 1; else -> 2 }
-                if (newTheme != widgetTheme) { widgetTheme = newTheme; buildUi() }
+                if (newTheme != widgetTheme) {
+                    widgetTheme = newTheme
+                    if (selectedBgRgb != 0 && bgPresets.none { it.first == selectedBgRgb }) selectedBgRgb = 0
+                    buildUi()
+                }
             }
             override fun onNothingSelected(parent: android.widget.AdapterView<*>) {}
         }
         themeRow.addView(themeSpinner)
         appearCard.addView(themeRow)
 
-        // Background color (existing)
+        // Background color
         appearCard.addView(tv("Background color", 12f, cMuted).apply { setPadding(0, 0, 0, dp(10)) })
-        val swatchRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { bottomMargin = dp(16) }
-        }
-        bgPresets.forEach { (rgb, _) ->
-            val isSelected = rgb == selectedBgRgb
-            val swatch = android.view.View(this).apply {
-                background = GradientDrawable().apply {
-                    shape = GradientDrawable.OVAL
-                    setColor(0xFF000000.toInt() or rgb)
-                    if (isSelected) setStroke(dp(3), cGreen)
-                    else setStroke(dp(2), cStroke)
-                }
-                layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)).apply { rightMargin = dp(10) }
-                isClickable = true; isFocusable = true
-            }
-            if (isSelected) {
-                val overlay = FrameLayout(this).apply {
-                    layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)).apply { rightMargin = dp(10) }
-                }
-                swatch.layoutParams = android.widget.FrameLayout.LayoutParams(dp(36), dp(36))
-                overlay.addView(swatch)
-                overlay.addView(TextView(this).apply {
-                    text = "✓"; textSize = 13f
-                    setTextColor(0xFFFFFFFF.toInt())
-                    gravity = Gravity.CENTER
-                    layoutParams = android.widget.FrameLayout.LayoutParams(dp(36), dp(36))
-                })
-                overlay.isClickable = true; overlay.isFocusable = true
-                overlay.setOnClickListener { selectedBgRgb = rgb; buildUi() }
-                swatchRow.addView(overlay)
-            } else {
-                swatch.setOnClickListener { selectedBgRgb = rgb; buildUi() }
-                swatchRow.addView(swatch)
-            }
-        }
-        appearCard.addView(swatchRow)
+        appearCard.addView(swatchRowWithAuto(bgPresets.map { it.first }, selectedBgRgb) { rgb ->
+            // First preset == auto; normalize so A stays highlighted
+            selectedBgRgb = if (rgb == bgPresets[0].first) 0 else rgb
+            buildUi()
+        }.apply {
+            (layoutParams as LinearLayout.LayoutParams).bottomMargin = dp(16)
+        })
 
         // Opacity slider
         appearCard.addView(tv("Background opacity", 12f, cMuted).apply { setPadding(0, 0, 0, dp(8)) })
@@ -358,6 +332,29 @@ class WidgetConfigActivity : Activity() {
             })
         }
         appearCard.addView(sizeRow)
+
+        // Show group monitors
+        appearCard.addView(spacer(14))
+        val gmRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+        }
+        gmRow.addView(tv("Show group monitors", 14f, cText).apply {
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        val gmSwitch = Switch(this).apply {
+            isChecked = showGroupMonitors
+            thumbTintList = android.content.res.ColorStateList.valueOf(if (showGroupMonitors) cGreen else cMuted)
+            trackTintList = android.content.res.ColorStateList.valueOf(
+                if (showGroupMonitors) (cGreen and 0x00FFFFFF or 0x44000000) else (cMuted and 0x00FFFFFF or 0x44000000))
+        }
+        gmSwitch.setOnCheckedChangeListener { _, checked ->
+            showGroupMonitors = checked
+            gmSwitch.thumbTintList = android.content.res.ColorStateList.valueOf(if (checked) cGreen else cMuted)
+            gmSwitch.trackTintList = android.content.res.ColorStateList.valueOf(
+                if (checked) (cGreen and 0x00FFFFFF or 0x44000000) else (cMuted and 0x00FFFFFF or 0x44000000))
+        }
+        gmRow.addView(gmSwitch)
+        appearCard.addView(gmRow)
         root.addView(appearCard)
 
         root.addView(spacer(20))
@@ -412,12 +409,14 @@ class WidgetConfigActivity : Activity() {
         val profileId = selectedProfileId ?: return
         Prefs.setProfileIdForWidget(this, appWidgetId, profileId)
         val alpha = bgOpacityPct * 255 / 100
-        Prefs.setWidgetBgColor(this, appWidgetId, (alpha shl 24) or selectedBgRgb)
+        val bgRgb = if (selectedBgRgb == 0) bgPresets[0].first else selectedBgRgb
+        Prefs.setWidgetBgColor(this, appWidgetId, (alpha shl 24) or bgRgb)
         Prefs.setWidgetTheme(this, appWidgetId, widgetTheme)
         Prefs.setWidgetHeaderBg(this, appWidgetId, if (selectedHeaderRgb == 0) 0 else 0xFF000000.toInt() or selectedHeaderRgb)
         Prefs.setWidgetFooterBg(this, appWidgetId, if (selectedFooterRgb == 0) 0 else 0xFF000000.toInt() or selectedFooterRgb)
         Prefs.setWidgetFontColor(this, appWidgetId, if (selectedFontRgb == 0) 0 else 0xFF000000.toInt() or selectedFontRgb)
         Prefs.setWidgetTextScalePct(this, appWidgetId, textScalePct)
+        Prefs.setWidgetShowGroupMonitors(this, appWidgetId, showGroupMonitors)
         UptimeWidget.scheduleAlarm(this)
         UptimeWidget.triggerUpdate(this, intArrayOf(appWidgetId))
         setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId))
@@ -485,7 +484,7 @@ class WidgetConfigActivity : Activity() {
                     addView(TextView(this@WidgetConfigActivity).apply {
                         text = "✓"
                         textSize = 11f
-                        setTextColor(0xFFFFFFFF.toInt())
+                        setTextColor(contrastColor(rgb))
                         gravity = Gravity.CENTER
                         layoutParams = android.widget.FrameLayout.LayoutParams(dp(32), dp(32))
                     })
@@ -564,6 +563,14 @@ class WidgetConfigActivity : Activity() {
 
     private fun spacer(n: Int) = View(this).apply {
         layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(n))
+    }
+
+    private fun contrastColor(rgb: Int): Int {
+        val r = (rgb shr 16) and 0xFF
+        val g = (rgb shr 8) and 0xFF
+        val b = rgb and 0xFF
+        val lum = (r * 299 + g * 587 + b * 114) / 1000
+        return if (lum > 160) 0xFF1A1A2E.toInt() else 0xFFFFFFFF.toInt()
     }
 
     private fun dp(n: Int) = (n * resources.displayMetrics.density).toInt()

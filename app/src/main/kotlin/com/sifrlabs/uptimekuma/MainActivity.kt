@@ -29,10 +29,11 @@ class MainActivity : Activity() {
 
     // Wizard form fields
     private var wizNameEdit: EditText? = null
+    private var wizUrlEdit: EditText? = null
     private var wizHostEdit: EditText? = null
     private var wizSlugEdit: EditText? = null
-    private var wizAutoSlugSwitch: Switch? = null
-    private var wizSpinner: Spinner? = null
+    private var wizShowAdvanced = false
+    private var wizSeekBar: SeekBar? = null
     private var wizAuthCheck: CheckBox? = null
     private var wizUserEdit: EditText? = null
     private var wizPassEdit: EditText? = null
@@ -192,92 +193,133 @@ class MainActivity : Activity() {
     }
 
     private fun buildWizardStep2(root: LinearLayout) {
+        wizShowAdvanced = false
         val step2 = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
 
         step2.addView(tv("🖥️  Add your first instance", 22f, cText, bold = true, bpad = dp(20)))
 
-        // Instance details card
-        val details = card()
-        details.addView(label("Name"))
+        // ── Instance Details section header with Advanced switch ───────────────
+        val detailsHeaderRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+        }
+        detailsHeaderRow.addView(sectionLabel("Instance Details").apply {
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        val advSwitch = Switch(this).apply {
+            text = "Advanced"; textSize = 12f; setTextColor(cMuted); isChecked = false
+            thumbTintList = android.content.res.ColorStateList.valueOf(cMuted)
+            trackTintList = android.content.res.ColorStateList.valueOf(cMuted and 0x00FFFFFF or 0x44000000)
+        }
+        detailsHeaderRow.addView(advSwitch)
+        step2.addView(detailsHeaderRow)
+
+        // ── Details card ───────────────────────────────────────────────────────
+        val detailsCard = card()
+        detailsCard.addView(label("Name"))
         wizNameEdit = styledEdit("Home Lab")
-        details.addView(wizNameEdit)
-        details.addView(spacer(10))
-        details.addView(label("Hostname"))
+        detailsCard.addView(wizNameEdit)
+
+        val urlSpacer = spacer(12); val urlLabel = label("Status page URL")
+        wizUrlEdit = styledEdit("https://uptime.example.com/status/my-slug").apply {
+            inputType = InputType.TYPE_TEXT_VARIATION_URI or InputType.TYPE_CLASS_TEXT
+        }
+        detailsCard.addView(urlSpacer); detailsCard.addView(urlLabel); detailsCard.addView(wizUrlEdit)
+
+        val hostSpacer = spacer(12); val hostLabel = label("Hostname")
         wizHostEdit = styledEdit(getString(R.string.hint_hostname)).apply {
             inputType = InputType.TYPE_TEXT_VARIATION_URI or InputType.TYPE_CLASS_TEXT
         }
-        details.addView(wizHostEdit)
-        details.addView(spacer(10))
-        val slugHeaderRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        slugHeaderRow.addView(label("Status page slug").apply {
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        })
-        wizAutoSlugSwitch = Switch(this).apply {
-            text = "Auto"
-            setTextColor(cMuted)
-            textSize = 13f
-            isChecked = true
-            thumbTintList = android.content.res.ColorStateList.valueOf(cGreen)
-            trackTintList = android.content.res.ColorStateList.valueOf(cGreen and 0x00FFFFFF or 0x44000000)
-        }
-        slugHeaderRow.addView(wizAutoSlugSwitch)
-        details.addView(slugHeaderRow)
-        wizSlugEdit = styledEdit(getString(R.string.hint_slug)).apply {
-            isEnabled = false
-            alpha = 0.35f
-        }
-        details.addView(wizSlugEdit)
-        wizAutoSlugSwitch!!.setOnCheckedChangeListener { _, checked ->
-            wizSlugEdit!!.isEnabled = !checked
-            wizSlugEdit!!.alpha = if (checked) 0.35f else 1f
-            val green = cGreen
-            val muted = cMuted
-            wizAutoSlugSwitch!!.thumbTintList = android.content.res.ColorStateList.valueOf(if (checked) green else muted)
-            wizAutoSlugSwitch!!.trackTintList = android.content.res.ColorStateList.valueOf(
-                if (checked) (green and 0x00FFFFFF or 0x44000000) else (muted and 0x00FFFFFF or 0x44000000))
-        }
-        step2.addView(details)
+        val slugSpacer = spacer(8); val slugLabel = label("Slug")
+        wizSlugEdit = styledEdit("default")
+        detailsCard.addView(hostSpacer); detailsCard.addView(hostLabel); detailsCard.addView(wizHostEdit)
+        detailsCard.addView(slugSpacer); detailsCard.addView(slugLabel); detailsCard.addView(wizSlugEdit)
+        step2.addView(detailsCard)
 
-        // Refresh interval card
-        val intervalCard = card()
-        intervalCard.addView(label("Refresh interval"))
-        wizSpinner = Spinner(this).apply {
-            adapter = ArrayAdapter(
-                this@MainActivity,
-                android.R.layout.simple_spinner_dropdown_item,
-                intervalOptions.map { if (it == 1) "1 minute" else "$it minutes" }
-            )
-            setSelection(1)
-        }
-        intervalCard.addView(wizSpinner)
-        step2.addView(intervalCard)
+        // ── Advanced section ───────────────────────────────────────────────────
+        val advSectionLabel = sectionLabel("Advanced")
+        val advCard = card()
 
-        // Auth card
-        val authCard = card()
         wizAuthCheck = CheckBox(this).apply {
-            text = getString(R.string.label_basic_auth)
-            setTextColor(cText)
-            textSize = 14f
+            text = getString(R.string.label_basic_auth); setTextColor(cText); textSize = 14f
         }
-        authCard.addView(wizAuthCheck)
-        authCard.addView(spacer(6))
-        wizUserEdit = styledEdit("Username").apply { visibility = View.GONE }
-        authCard.addView(wizUserEdit)
+        val credSpacer = spacer(8)
+        wizUserEdit = styledEdit("Username")
+        val pwSpacer = spacer(8)
         wizPassEdit = styledEdit("Password").apply {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-            visibility = View.GONE
         }
-        authCard.addView(wizPassEdit)
-        step2.addView(authCard)
+        advCard.addView(wizAuthCheck)
+        advCard.addView(credSpacer); advCard.addView(wizUserEdit)
+        advCard.addView(pwSpacer);   advCard.addView(wizPassEdit)
 
-        wizAuthCheck!!.setOnCheckedChangeListener { _, checked ->
-            val v = if (checked) View.VISIBLE else View.GONE
-            wizUserEdit!!.visibility = v
-            wizPassEdit!!.visibility = v
+        advCard.addView(spacer(14))
+        val intervalValueLabel = tv("5 minutes", 12f, cText)
+        val intervalLabelRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
         }
+        intervalLabelRow.addView(label("Refresh interval").apply {
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        intervalLabelRow.addView(intervalValueLabel)
+        advCard.addView(intervalLabelRow)
+        wizSeekBar = SeekBar(this).apply {
+            max = intervalOptions.size - 1; progress = 1
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(32))
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(sb: SeekBar, p: Int, fromUser: Boolean) {
+                    intervalValueLabel.text = formatInterval(intervalOptions[p])
+                }
+                override fun onStartTrackingTouch(sb: SeekBar) {}
+                override fun onStopTrackingTouch(sb: SeekBar) {}
+            })
+        }
+        advCard.addView(wizSeekBar)
+
+        step2.addView(advSectionLabel); step2.addView(advCard)
+
+        // ── Visibility ─────────────────────────────────────────────────────────
+        fun applyWizMode() {
+            val adv = wizShowAdvanced
+            urlSpacer.visibility     = if (!adv) View.VISIBLE else View.GONE
+            urlLabel.visibility      = if (!adv) View.VISIBLE else View.GONE
+            wizUrlEdit!!.visibility  = if (!adv) View.VISIBLE else View.GONE
+            hostSpacer.visibility    = if (adv) View.VISIBLE else View.GONE
+            hostLabel.visibility     = if (adv) View.VISIBLE else View.GONE
+            wizHostEdit!!.visibility = if (adv) View.VISIBLE else View.GONE
+            slugSpacer.visibility    = if (adv) View.VISIBLE else View.GONE
+            slugLabel.visibility     = if (adv) View.VISIBLE else View.GONE
+            wizSlugEdit!!.visibility = if (adv) View.VISIBLE else View.GONE
+            advSectionLabel.visibility = if (adv) View.VISIBLE else View.GONE
+            advCard.visibility         = if (adv) View.VISIBLE else View.GONE
+            val showCreds = adv && wizAuthCheck!!.isChecked
+            credSpacer.visibility    = if (showCreds) View.VISIBLE else View.GONE
+            wizUserEdit!!.visibility = if (showCreds) View.VISIBLE else View.GONE
+            pwSpacer.visibility      = if (showCreds) View.VISIBLE else View.GONE
+            wizPassEdit!!.visibility = if (showCreds) View.VISIBLE else View.GONE
+            advSwitch.thumbTintList = android.content.res.ColorStateList.valueOf(if (adv) cGreen else cMuted)
+            advSwitch.trackTintList = android.content.res.ColorStateList.valueOf(
+                if (adv) (cGreen and 0x00FFFFFF or 0x44000000) else (cMuted and 0x00FFFFFF or 0x44000000))
+        }
+        applyWizMode()
+
+        advSwitch.setOnCheckedChangeListener { _, checked ->
+            wizShowAdvanced = checked
+            if (checked) {
+                val (h, s) = parseStatusPageUrl(wizUrlEdit!!.text.toString())
+                wizHostEdit!!.setText(h); wizSlugEdit!!.setText(s)
+            } else {
+                wizUrlEdit!!.setText(reconstructUrl(
+                    wizHostEdit!!.text.toString().trim(),
+                    wizSlugEdit!!.text.toString().trim()))
+            }
+            applyWizMode()
+        }
+        wizAuthCheck!!.setOnCheckedChangeListener { _, _ -> applyWizMode() }
 
         step2.addView(spacer(8))
         step2.addView(primaryBtn("Save & Continue").apply {
@@ -288,11 +330,14 @@ class MainActivity : Activity() {
     }
 
     private fun saveWizardProfile(root: LinearLayout, step2: LinearLayout) {
-        val name     = wizNameEdit!!.text.toString().trim()
-        val hostname = wizHostEdit!!.text.toString().trimEnd('/')
-        val slug     = if (wizAutoSlugSwitch!!.isChecked) "" else wizSlugEdit!!.text.toString().trim().ifEmpty { "default" }
+        val name = wizNameEdit!!.text.toString().trim()
+        val (hostname, slug) = if (wizShowAdvanced) {
+            wizHostEdit!!.text.toString().trimEnd('/') to wizSlugEdit!!.text.toString().trim().ifEmpty { "default" }
+        } else {
+            parseStatusPageUrl(wizUrlEdit!!.text.toString())
+        }
         if (name.isEmpty() || hostname.isEmpty()) {
-            Toast.makeText(this, "Name and hostname are required", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Name and URL are required", Toast.LENGTH_SHORT).show()
             return
         }
         val profile = Profile(
@@ -300,8 +345,8 @@ class MainActivity : Activity() {
             name            = name,
             hostname        = hostname,
             slug            = slug,
-            intervalMinutes = intervalOptions[wizSpinner!!.selectedItemPosition],
-            authEnabled     = wizAuthCheck!!.isChecked,
+            intervalMinutes = intervalOptions[wizSeekBar!!.progress],
+            authEnabled     = wizShowAdvanced && wizAuthCheck!!.isChecked,
             username        = wizUserEdit!!.text.toString(),
             password        = wizPassEdit!!.text.toString()
         )
@@ -712,6 +757,23 @@ class MainActivity : Activity() {
 
     private fun spacer(n: Int) = View(this).apply {
         layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(n))
+    }
+
+    private fun formatInterval(minutes: Int) = if (minutes == 1) "1 minute" else "$minutes minutes"
+
+    private fun parseStatusPageUrl(input: String): Pair<String, String> {
+        val trimmed = input.trim().trimEnd('/')
+        val m = Regex("""^(https?://[^/]+)/(?:status|api/status-page)/([A-Za-z0-9][A-Za-z0-9_-]*)""")
+            .find(trimmed)
+        if (m != null) return m.groupValues[1] to m.groupValues[2]
+        val hostM = Regex("""^(https?://[^/]+)""").find(trimmed)
+        if (hostM != null) return hostM.groupValues[1] to "default"
+        return trimmed to "default"
+    }
+
+    private fun reconstructUrl(hostname: String, slug: String): String {
+        if (hostname.isEmpty()) return ""
+        return "$hostname/status/${slug.ifEmpty { "default" }}"
     }
 
     private fun dp(n: Int) = (n * resources.displayMetrics.density).toInt()

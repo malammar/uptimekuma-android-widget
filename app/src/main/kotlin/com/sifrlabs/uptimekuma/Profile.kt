@@ -11,7 +11,6 @@ data class Profile(
     val authEnabled: Boolean,
     val username: String,
     val password: String,
-    val showGroupMonitors: Boolean = false
 ) {
     companion object {
         fun newId(): String = java.util.UUID.randomUUID().toString()
@@ -25,7 +24,6 @@ data class Profile(
             authEnabled       = obj.optBoolean("authEnabled", false),
             username          = obj.optString("username", ""),
             password          = obj.optString("password", ""),
-            showGroupMonitors = obj.optBoolean("showGroupMonitors", false)
         )
 
         fun toJson(p: Profile): JSONObject = JSONObject().apply {
@@ -37,7 +35,6 @@ data class Profile(
             put("authEnabled",       p.authEnabled)
             put("username",          p.username)
             put("password",          p.password)
-            put("showGroupMonitors", p.showGroupMonitors)
         }
     }
 }
