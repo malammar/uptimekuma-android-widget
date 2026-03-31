@@ -77,20 +77,26 @@ class MonitorListFactory(
         val item = items.getOrNull(position)
             ?: return RemoteViews(context.packageName, R.layout.widget_monitor_row)
 
+        // Per-widget appearance
+        val darkMode      = when (Prefs.getWidgetTheme(context, appWidgetId)) {
+            0    -> true
+            1    -> false
+            else -> (context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                    android.content.res.Configuration.UI_MODE_NIGHT_YES
+        }
+        val scale         = Prefs.getWidgetTextScalePct(context, appWidgetId) / 100f
+        val fontPref      = Prefs.getWidgetFontColor(context, appWidgetId)
+        val autoPrimary   = if (darkMode) 0xFFFFFFFF.toInt() else 0xFF1A1A2E.toInt()
+        val autoSecondary = if (darkMode) 0xFFB0BEC5.toInt() else 0xFF607080.toInt()
+        val primaryColor  = if (fontPref == 0) autoPrimary else fontPref
+        val secondaryColor = if (fontPref == 0) autoSecondary
+                             else (fontPref and 0x00FFFFFF) or 0xCC000000.toInt()
+
         return if (item.type == TYPE_HEADER) {
             RemoteViews(context.packageName, R.layout.widget_group_header).also {
                 it.setTextViewText(R.id.group_name, item.label)
-                if (item.history.isNotEmpty()) {
-                    val pctColor = when {
-                        item.uptimePct >= 90f -> 0xFF4CAF50.toInt()
-                        item.uptimePct >= 70f -> 0xFFFF9800.toInt()
-                        else                  -> 0xFFF44336.toInt()
-                    }
-                    val pctText = if (item.uptimePct >= 100f) "100%" else "%.1f%%".format(item.uptimePct)
-                    it.setTextViewText(R.id.group_uptime_pct, pctText)
-                    it.setTextColor(R.id.group_uptime_pct, pctColor)
-                    it.setImageViewBitmap(R.id.group_uptime_bars, drawBars(item.history))
-                }
+                it.setTextColor(R.id.group_name, secondaryColor)
+                it.setTextViewTextSize(R.id.group_name, android.util.TypedValue.COMPLEX_UNIT_SP, 10f * scale)
             }
         } else {
             val pctColor = when {
@@ -102,7 +108,10 @@ class MonitorListFactory(
             RemoteViews(context.packageName, R.layout.widget_monitor_row).also {
                 it.setTextViewText(R.id.uptime_pct, pctText)
                 it.setTextColor(R.id.uptime_pct, pctColor)
+                it.setTextViewTextSize(R.id.uptime_pct, android.util.TypedValue.COMPLEX_UNIT_SP, 10f * scale)
                 it.setTextViewText(R.id.monitor_name, item.label)
+                it.setTextColor(R.id.monitor_name, primaryColor)
+                it.setTextViewTextSize(R.id.monitor_name, android.util.TypedValue.COMPLEX_UNIT_SP, 11f * scale)
                 it.setImageViewBitmap(R.id.uptime_bars, drawBars(item.history))
             }
         }

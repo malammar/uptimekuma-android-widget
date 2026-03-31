@@ -1,43 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="horizontal"
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/group_name"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:gravity="center_vertical"
+    android:textColor="@color/text_secondary"
+    android:textSize="10sp"
+    android:textAllCaps="true"
+    android:paddingStart="6dp"
+    android:paddingEnd="6dp"
     android:paddingTop="10dp"
     android:paddingBottom="3dp"
-    android:paddingStart="6dp"
-    android:paddingEnd="2dp">
-
-    <!-- Group name — takes the same weight=1 space as monitor_name -->
-    <TextView
-        android:id="@+id/group_name"
-        android:layout_width="0dp"
-        android:layout_weight="1"
-        android:layout_height="wrap_content"
-        android:textColor="@color/text_secondary"
-        android:textSize="10sp"
-        android:textAllCaps="true"
-        android:paddingEnd="4dp"
-        android:maxLines="1"
-        android:ellipsize="end" />
-
-    <!-- Aggregate uptime % — same 36dp as uptime_pct, but leading -->
-    <TextView
-        android:id="@+id/group_uptime_pct"
-        android:layout_width="36dp"
-        android:layout_height="wrap_content"
-        android:textSize="10sp"
-        android:textStyle="bold"
-        android:gravity="center"
-        android:maxLines="1" />
-
-    <!-- Aggregate history bars — same 72dp×14dp as uptime_bars -->
-    <ImageView
-        android:id="@+id/group_uptime_bars"
-        android:layout_width="72dp"
-        android:layout_height="14dp"
-        android:scaleType="fitXY"
-        android:contentDescription="" />
-
-</LinearLayout>
+    android:maxLines="1"
+    android:ellipsize="end" />

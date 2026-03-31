@@ -79,7 +79,50 @@ class WidgetUpdateService : Service() {
 
     private fun buildRemoteViews(appWidgetId: Int, success: Boolean): RemoteViews {
         val views = RemoteViews(packageName, R.layout.widget_layout)
-        views.setInt(R.id.widget_root, "setBackgroundColor", Prefs.getWidgetBgColor(this, appWidgetId))
+        val bgColor = Prefs.getWidgetBgColor(this, appWidgetId)
+        views.setInt(R.id.widget_root, "setBackgroundColor", bgColor)
+
+        // ── Appearance settings ────────────────────────────────────────────────
+        val darkMode   = when (Prefs.getWidgetTheme(this, appWidgetId)) {
+            0    -> true
+            1    -> false
+            else -> (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                    android.content.res.Configuration.UI_MODE_NIGHT_YES
+        }
+        val scalePct   = Prefs.getWidgetTextScalePct(this, appWidgetId)
+        val scale      = scalePct / 100f
+
+        // Font colors
+        val autoPrimary   = if (darkMode) 0xFFFFFFFF.toInt() else 0xFF1A1A2E.toInt()
+        val autoSecondary = if (darkMode) 0xFFB0BEC5.toInt() else 0xFF607080.toInt()
+        val fontPref      = Prefs.getWidgetFontColor(this, appWidgetId)
+        val primaryColor  = if (fontPref == 0) autoPrimary else fontPref
+        val secondaryColor = if (fontPref == 0) autoSecondary
+                             else (fontPref and 0x00FFFFFF) or 0xCC000000.toInt()
+
+        // Header background
+        val r = (bgColor shr 16) and 0xFF
+        val g = (bgColor shr 8) and 0xFF
+        val b = bgColor and 0xFF
+        val lum = (r * 299 + g * 587 + b * 114) / 1000
+        val shift = 25
+        val hr = if (lum < 128) (r + shift).coerceAtMost(255) else (r - shift).coerceAtLeast(0)
+        val hg = if (lum < 128) (g + shift).coerceAtMost(255) else (g - shift).coerceAtLeast(0)
+        val hb = if (lum < 128) (b + shift).coerceAtMost(255) else (b - shift).coerceAtLeast(0)
+        val autoHeaderColor = ((bgColor ushr 24) shl 24) or (hr shl 16) or (hg shl 8) or hb
+        val headerBgPref = Prefs.getWidgetHeaderBg(this, appWidgetId)
+        val headerColor  = if (headerBgPref == 0) autoHeaderColor else headerBgPref
+        views.setInt(R.id.widget_header_row, "setBackgroundColor", headerColor)
+        views.setTextColor(R.id.widget_header, primaryColor)
+        views.setTextViewTextSize(R.id.widget_header, android.util.TypedValue.COMPLEX_UNIT_SP, 14f * scale)
+        views.setTextColor(R.id.btn_refresh, secondaryColor)
+
+        // Footer background
+        val footerBgPref = Prefs.getWidgetFooterBg(this, appWidgetId)
+        val footerColor  = if (footerBgPref == 0) bgColor else footerBgPref
+        views.setInt(R.id.widget_footer_row, "setBackgroundColor", footerColor)
+        views.setTextColor(R.id.last_updated, secondaryColor)
+        views.setTextViewTextSize(R.id.last_updated, android.util.TypedValue.COMPLEX_UNIT_SP, 10f * scale)
 
         // Unique URI per widget forces a separate RemoteViewsFactory instance
         val serviceIntent = Intent(this, MonitorListService::class.java).apply {

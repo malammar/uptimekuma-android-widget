@@ -25,16 +25,28 @@ class WidgetConfigActivity : Activity() {
     private lateinit var root: LinearLayout
 
     // Appearance state — persists across buildUi() calls
-    private val bgPresets = listOf(
-        0x1A1A2E to "Navy",
-        0x000000 to "Black",
-        0x1C1C2E to "Slate",
-        0x0A1628 to "Blue",
-        0x1C1C1C to "Charcoal",
-        0x0D1F12 to "Forest",
+    private val darkBgPresets = listOf(
+        0x1A1A2E to "Navy", 0x000000 to "Black", 0x1C1C2E to "Slate",
+        0x0A1628 to "Blue", 0x1C1C1C to "Charcoal", 0x0D1F12 to "Forest",
     )
-    private var selectedBgRgb: Int = 0x1A1A2E
-    private var bgOpacityPct: Int  = 80
+    private val lightBgPresets = listOf(
+        0xFFFFFF to "White", 0xF2F6FA to "Silver", 0xFFF8F0 to "Warm",
+        0xF0F5FF to "Sky",   0xF5F5F5 to "Grey",   0xF0FFF4 to "Mint",
+    )
+    private val darkFontPresets  = listOf(0xFFFFFF, 0xB0BEC5, 0xE0E0E0, 0x212121, 0xFFB300, 0x4DB6AC)
+    private val lightFontPresets = listOf(0x1A1A2E, 0x212121, 0x607080, 0x000000, 0x8B0000, 0x1B5E20)
+
+    private val effectiveDarkMode get() = when (widgetTheme) { 0 -> true; 1 -> false; else -> isDark }
+    private val bgPresets         get() = if (effectiveDarkMode) darkBgPresets else lightBgPresets
+    private val fontPresets       get() = if (effectiveDarkMode) darkFontPresets else lightFontPresets
+
+    private var selectedBgRgb: Int     = 0x1A1A2E
+    private var bgOpacityPct: Int      = 80
+    private var widgetTheme: Int       = 2    // 0=Dark, 1=Light, 2=System
+    private var selectedHeaderRgb: Int = 0   // 0 = auto
+    private var selectedFooterRgb: Int = 0   // 0 = auto
+    private var selectedFontRgb: Int   = 0   // 0 = auto
+    private var textScalePct: Int      = 100  // 100 = 1.0x
 
     // ── Theme ──────────────────────────────────────────────────────────────────
 
@@ -72,6 +84,11 @@ class WidgetConfigActivity : Activity() {
         val storedRgb     = storedColor and 0x00FFFFFF
         if (bgPresets.any { it.first == storedRgb }) selectedBgRgb = storedRgb
         bgOpacityPct = (storedColor ushr 24) * 100 / 255
+        widgetTheme       = Prefs.getWidgetTheme(this, appWidgetId)
+        selectedHeaderRgb = Prefs.getWidgetHeaderBg(this, appWidgetId).let { if (it == 0) 0 else it and 0x00FFFFFF }
+        selectedFooterRgb = Prefs.getWidgetFooterBg(this, appWidgetId).let { if (it == 0) 0 else it and 0x00FFFFFF }
+        selectedFontRgb   = Prefs.getWidgetFontColor(this, appWidgetId).let { if (it == 0) 0 else it and 0x00FFFFFF }
+        textScalePct      = Prefs.getWidgetTextScalePct(this, appWidgetId)
 
         val p = dp(20)
         val scroll = ScrollView(this).apply { isFillViewport = true }
@@ -188,10 +205,38 @@ class WidgetConfigActivity : Activity() {
         root.addView(sectionLabel("Appearance"))
         val appearCard = card()
 
-        // Color swatches
-        appearCard.addView(tv("Background color", 12f, cMuted).apply {
-            setPadding(0, 0, 0, dp(10))
+        // Theme selector
+        val themeRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = dp(16) }
+        }
+        themeRow.addView(tv("Theme", 14f, cText).apply {
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         })
+        val themeSpinner = Spinner(this).apply {
+            adapter = ArrayAdapter(
+                this@WidgetConfigActivity,
+                android.R.layout.simple_spinner_dropdown_item,
+                listOf("System", "Dark", "Light")
+            )
+            // spinner pos: 0=System, 1=Dark, 2=Light  →  widgetTheme: 2, 0, 1
+            setSelection(when (widgetTheme) { 0 -> 1; 1 -> 2; else -> 0 })
+        }
+        themeSpinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: android.widget.AdapterView<*>, view: android.view.View?, pos: Int, id: Long) {
+                val newTheme = when (pos) { 1 -> 0; 2 -> 1; else -> 2 }
+                if (newTheme != widgetTheme) { widgetTheme = newTheme; buildUi() }
+            }
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>) {}
+        }
+        themeRow.addView(themeSpinner)
+        appearCard.addView(themeRow)
+
+        // Background color (existing)
+        appearCard.addView(tv("Background color", 12f, cMuted).apply { setPadding(0, 0, 0, dp(10)) })
         val swatchRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             layoutParams = LinearLayout.LayoutParams(
@@ -200,37 +245,29 @@ class WidgetConfigActivity : Activity() {
         }
         bgPresets.forEach { (rgb, _) ->
             val isSelected = rgb == selectedBgRgb
-            val swatch = View(this).apply {
+            val swatch = android.view.View(this).apply {
                 background = GradientDrawable().apply {
                     shape = GradientDrawable.OVAL
                     setColor(0xFF000000.toInt() or rgb)
                     if (isSelected) setStroke(dp(3), cGreen)
                     else setStroke(dp(2), cStroke)
                 }
-                layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)).apply {
-                    rightMargin = dp(10)
-                }
-                isClickable = true
-                isFocusable = true
+                layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)).apply { rightMargin = dp(10) }
+                isClickable = true; isFocusable = true
             }
             if (isSelected) {
-                // Overlay a checkmark on the selected swatch
                 val overlay = FrameLayout(this).apply {
-                    layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)).apply {
-                        rightMargin = dp(10)
-                    }
+                    layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)).apply { rightMargin = dp(10) }
                 }
                 swatch.layoutParams = android.widget.FrameLayout.LayoutParams(dp(36), dp(36))
                 overlay.addView(swatch)
                 overlay.addView(TextView(this).apply {
-                    text = "✓"
-                    textSize = 13f
+                    text = "✓"; textSize = 13f
                     setTextColor(0xFFFFFFFF.toInt())
                     gravity = Gravity.CENTER
                     layoutParams = android.widget.FrameLayout.LayoutParams(dp(36), dp(36))
                 })
-                overlay.isClickable = true
-                overlay.isFocusable = true
+                overlay.isClickable = true; overlay.isFocusable = true
                 overlay.setOnClickListener { selectedBgRgb = rgb; buildUi() }
                 swatchRow.addView(overlay)
             } else {
@@ -241,10 +278,13 @@ class WidgetConfigActivity : Activity() {
         appearCard.addView(swatchRow)
 
         // Opacity slider
-        appearCard.addView(tv("Opacity", 12f, cMuted).apply { setPadding(0, 0, 0, dp(8)) })
+        appearCard.addView(tv("Background opacity", 12f, cMuted).apply { setPadding(0, 0, 0, dp(8)) })
         val opacityRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = dp(16) }
         }
         val opacityLabel = tv("$bgOpacityPct%", 13f, cText).apply {
             layoutParams = LinearLayout.LayoutParams(dp(40), LinearLayout.LayoutParams.WRAP_CONTENT)
@@ -258,8 +298,7 @@ class WidgetConfigActivity : Activity() {
             }
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(sb: SeekBar, p: Int, fromUser: Boolean) {
-                    bgOpacityPct = p
-                    opacityLabel.text = "$p%"
+                    bgOpacityPct = p; opacityLabel.text = "$p%"
                 }
                 override fun onStartTrackingTouch(sb: SeekBar) {}
                 override fun onStopTrackingTouch(sb: SeekBar) {}
@@ -268,6 +307,57 @@ class WidgetConfigActivity : Activity() {
         opacityRow.addView(seekBar)
         opacityRow.addView(opacityLabel)
         appearCard.addView(opacityRow)
+
+        // Header color
+        appearCard.addView(tv("Header background color", 12f, cMuted).apply { setPadding(0, 0, 0, dp(10)) })
+        appearCard.addView(swatchRowWithAuto(bgPresets.map { it.first }, selectedHeaderRgb) {
+            selectedHeaderRgb = it; buildUi()
+        }.apply {
+            (layoutParams as LinearLayout.LayoutParams).bottomMargin = dp(16)
+        })
+
+        // Footer color
+        appearCard.addView(tv("Footer background color", 12f, cMuted).apply { setPadding(0, 0, 0, dp(10)) })
+        appearCard.addView(swatchRowWithAuto(bgPresets.map { it.first }, selectedFooterRgb) {
+            selectedFooterRgb = it; buildUi()
+        }.apply {
+            (layoutParams as LinearLayout.LayoutParams).bottomMargin = dp(16)
+        })
+
+        // Font color
+        appearCard.addView(tv("Font color", 12f, cMuted).apply { setPadding(0, 0, 0, dp(10)) })
+        appearCard.addView(swatchRowWithAuto(fontPresets, selectedFontRgb) {
+            selectedFontRgb = it; buildUi()
+        }.apply {
+            (layoutParams as LinearLayout.LayoutParams).bottomMargin = dp(16)
+        })
+
+        // Text size
+        appearCard.addView(tv("Text size", 12f, cMuted).apply { setPadding(0, 0, 0, dp(10)) })
+        val sizeRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+        listOf(85 to "S", 100 to "M", 120 to "L", 140 to "XL").forEach { (pct, label) ->
+            val sel = textScalePct == pct
+            sizeRow.addView(Button(this).apply {
+                text = label
+                isAllCaps = false
+                elevation = 0f
+                textSize = 13f
+                setTextColor(if (sel) 0xFFFFFFFF.toInt() else cMuted)
+                background = GradientDrawable().apply {
+                    setColor(if (sel) cGreen else cCard)
+                    cornerRadius = dp(8).toFloat()
+                    setStroke(dp(1), if (sel) cGreen else cStroke)
+                }
+                layoutParams = LinearLayout.LayoutParams(0, dp(36), 1f).apply { rightMargin = dp(6) }
+                setOnClickListener { textScalePct = pct; buildUi() }
+            })
+        }
+        appearCard.addView(sizeRow)
         root.addView(appearCard)
 
         root.addView(spacer(20))
@@ -323,6 +413,11 @@ class WidgetConfigActivity : Activity() {
         Prefs.setProfileIdForWidget(this, appWidgetId, profileId)
         val alpha = bgOpacityPct * 255 / 100
         Prefs.setWidgetBgColor(this, appWidgetId, (alpha shl 24) or selectedBgRgb)
+        Prefs.setWidgetTheme(this, appWidgetId, widgetTheme)
+        Prefs.setWidgetHeaderBg(this, appWidgetId, if (selectedHeaderRgb == 0) 0 else 0xFF000000.toInt() or selectedHeaderRgb)
+        Prefs.setWidgetFooterBg(this, appWidgetId, if (selectedFooterRgb == 0) 0 else 0xFF000000.toInt() or selectedFooterRgb)
+        Prefs.setWidgetFontColor(this, appWidgetId, if (selectedFontRgb == 0) 0 else 0xFF000000.toInt() or selectedFontRgb)
+        Prefs.setWidgetTextScalePct(this, appWidgetId, textScalePct)
         UptimeWidget.scheduleAlarm(this)
         UptimeWidget.triggerUpdate(this, intArrayOf(appWidgetId))
         setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId))
@@ -338,6 +433,78 @@ class WidgetConfigActivity : Activity() {
     }
 
     // ── Design helpers ─────────────────────────────────────────────────────────
+
+    private fun swatchRowWithAuto(
+        rgbList: List<Int>,
+        selectedRgb: Int,
+        onSelect: (Int) -> Unit
+    ): LinearLayout = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        )
+
+        // Auto swatch
+        val autoSel = selectedRgb == 0
+        addView(FrameLayout(this@WidgetConfigActivity).apply {
+            layoutParams = LinearLayout.LayoutParams(dp(32), dp(32)).apply { rightMargin = dp(8) }
+            isClickable = true; isFocusable = true
+            addView(android.view.View(this@WidgetConfigActivity).apply {
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(cCardHi)
+                    setStroke(dp(if (autoSel) 2 else 1), if (autoSel) cGreen else cStroke)
+                }
+                layoutParams = android.widget.FrameLayout.LayoutParams(dp(32), dp(32))
+            })
+            addView(TextView(this@WidgetConfigActivity).apply {
+                text = "A"
+                textSize = 10f
+                setTextColor(if (autoSel) cGreen else cMuted)
+                gravity = Gravity.CENTER
+                layoutParams = android.widget.FrameLayout.LayoutParams(dp(32), dp(32))
+            })
+            setOnClickListener { onSelect(0) }
+        })
+
+        // Color swatches
+        rgbList.forEach { rgb ->
+            val isSel = rgb == selectedRgb
+            if (isSel) {
+                addView(FrameLayout(this@WidgetConfigActivity).apply {
+                    layoutParams = LinearLayout.LayoutParams(dp(32), dp(32)).apply { rightMargin = dp(8) }
+                    isClickable = true; isFocusable = true
+                    addView(android.view.View(this@WidgetConfigActivity).apply {
+                        background = GradientDrawable().apply {
+                            shape = GradientDrawable.OVAL
+                            setColor(0xFF000000.toInt() or rgb)
+                            setStroke(dp(2), cGreen)
+                        }
+                        layoutParams = android.widget.FrameLayout.LayoutParams(dp(32), dp(32))
+                    })
+                    addView(TextView(this@WidgetConfigActivity).apply {
+                        text = "✓"
+                        textSize = 11f
+                        setTextColor(0xFFFFFFFF.toInt())
+                        gravity = Gravity.CENTER
+                        layoutParams = android.widget.FrameLayout.LayoutParams(dp(32), dp(32))
+                    })
+                    setOnClickListener { onSelect(rgb) }
+                })
+            } else {
+                addView(android.view.View(this@WidgetConfigActivity).apply {
+                    background = GradientDrawable().apply {
+                        shape = GradientDrawable.OVAL
+                        setColor(0xFF000000.toInt() or rgb)
+                        setStroke(dp(1), cStroke)
+                    }
+                    layoutParams = LinearLayout.LayoutParams(dp(32), dp(32)).apply { rightMargin = dp(8) }
+                    isClickable = true; isFocusable = true
+                    setOnClickListener { onSelect(rgb) }
+                })
+            }
+        }
+    }
 
     private fun card(): LinearLayout = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL

@@ -185,6 +185,95 @@ class PrefsTest {
         assertEquals("Existing", profiles[0].name)
     }
 
+    // ── Per-widget appearance (v1.2) ──────────────────────────────────────────
+
+    @Test
+    fun widgetTheme_defaultIsSystem() {
+        assertEquals(2, Prefs.getWidgetTheme(ctx, 1))
+    }
+
+    @Test
+    fun widgetTheme_setAndGet() {
+        Prefs.setWidgetTheme(ctx, 1, 0)   // Dark
+        assertEquals(0, Prefs.getWidgetTheme(ctx, 1))
+        Prefs.setWidgetTheme(ctx, 1, 1)   // Light
+        assertEquals(1, Prefs.getWidgetTheme(ctx, 1))
+    }
+
+    @Test
+    fun widgetHeaderBg_defaultIsZero() {
+        assertEquals(0, Prefs.getWidgetHeaderBg(ctx, 1))
+    }
+
+    @Test
+    fun widgetHeaderBg_setAndGet() {
+        Prefs.setWidgetHeaderBg(ctx, 1, 0xFF1A1A2E.toInt())
+        assertEquals(0xFF1A1A2E.toInt(), Prefs.getWidgetHeaderBg(ctx, 1))
+    }
+
+    @Test
+    fun widgetFooterBg_defaultIsZero() {
+        assertEquals(0, Prefs.getWidgetFooterBg(ctx, 1))
+    }
+
+    @Test
+    fun widgetFooterBg_setAndGet() {
+        Prefs.setWidgetFooterBg(ctx, 1, 0xFF000000.toInt())
+        assertEquals(0xFF000000.toInt(), Prefs.getWidgetFooterBg(ctx, 1))
+    }
+
+    @Test
+    fun widgetFontColor_defaultIsZero() {
+        assertEquals(0, Prefs.getWidgetFontColor(ctx, 1))
+    }
+
+    @Test
+    fun widgetFontColor_setAndGet() {
+        Prefs.setWidgetFontColor(ctx, 1, 0xFFFFFFFF.toInt())
+        assertEquals(0xFFFFFFFF.toInt(), Prefs.getWidgetFontColor(ctx, 1))
+    }
+
+    @Test
+    fun widgetTextScalePct_defaultIs100() {
+        assertEquals(100, Prefs.getWidgetTextScalePct(ctx, 1))
+    }
+
+    @Test
+    fun widgetTextScalePct_setAndGet() {
+        Prefs.setWidgetTextScalePct(ctx, 1, 120)
+        assertEquals(120, Prefs.getWidgetTextScalePct(ctx, 1))
+    }
+
+    @Test
+    fun removeWidget_clearsAllAppearanceKeys() {
+        Prefs.setWidgetTheme(ctx, 5, 1)
+        Prefs.setWidgetHeaderBg(ctx, 5, 0xFF112233.toInt())
+        Prefs.setWidgetFooterBg(ctx, 5, 0xFF445566.toInt())
+        Prefs.setWidgetFontColor(ctx, 5, 0xFFFFFFFF.toInt())
+        Prefs.setWidgetTextScalePct(ctx, 5, 140)
+
+        Prefs.removeWidget(ctx, 5)
+
+        assertEquals(2,   Prefs.getWidgetTheme(ctx, 5))         // back to default
+        assertEquals(0,   Prefs.getWidgetHeaderBg(ctx, 5))
+        assertEquals(0,   Prefs.getWidgetFooterBg(ctx, 5))
+        assertEquals(0,   Prefs.getWidgetFontColor(ctx, 5))
+        assertEquals(100, Prefs.getWidgetTextScalePct(ctx, 5))
+    }
+
+    @Test
+    fun widgetAppearance_isolatedPerWidget() {
+        Prefs.setWidgetTheme(ctx, 10, 0)       // Dark
+        Prefs.setWidgetTheme(ctx, 11, 1)       // Light
+        Prefs.setWidgetTextScalePct(ctx, 10, 85)
+        Prefs.setWidgetTextScalePct(ctx, 11, 140)
+
+        assertEquals(0,  Prefs.getWidgetTheme(ctx, 10))
+        assertEquals(1,  Prefs.getWidgetTheme(ctx, 11))
+        assertEquals(85,  Prefs.getWidgetTextScalePct(ctx, 10))
+        assertEquals(140, Prefs.getWidgetTextScalePct(ctx, 11))
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private fun makeProfile(id: String, name: String) = Profile(

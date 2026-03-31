@@ -66,6 +66,11 @@ object Prefs {
             .remove("widget_profile_$appWidgetId")
             .remove("cache_$appWidgetId")
             .remove("bg_color_$appWidgetId")
+            .remove("widget_theme_$appWidgetId")
+            .remove("header_bg_$appWidgetId")
+            .remove("footer_bg_$appWidgetId")
+            .remove("font_color_$appWidgetId")
+            .remove("text_scale_$appWidgetId")
             .apply()
     }
 
@@ -76,6 +81,38 @@ object Prefs {
 
     fun setWidgetBgColor(ctx: Context, appWidgetId: Int, color: Int) =
         prefs(ctx).edit().putInt("bg_color_$appWidgetId", color).apply()
+
+    // ── Per-widget appearance extras ───────────────────────────────────────────
+
+    // 0 = Dark, 1 = Light, 2 = System (default)
+    fun getWidgetTheme(ctx: Context, appWidgetId: Int): Int =
+        prefs(ctx).getInt("widget_theme_$appWidgetId", 2)
+    fun setWidgetTheme(ctx: Context, appWidgetId: Int, v: Int) =
+        prefs(ctx).edit().putInt("widget_theme_$appWidgetId", v).apply()
+
+    // 0 = auto-compute from bg color
+    fun getWidgetHeaderBg(ctx: Context, appWidgetId: Int): Int =
+        prefs(ctx).getInt("header_bg_$appWidgetId", 0)
+    fun setWidgetHeaderBg(ctx: Context, appWidgetId: Int, v: Int) =
+        prefs(ctx).edit().putInt("header_bg_$appWidgetId", v).apply()
+
+    // 0 = same as widget bg
+    fun getWidgetFooterBg(ctx: Context, appWidgetId: Int): Int =
+        prefs(ctx).getInt("footer_bg_$appWidgetId", 0)
+    fun setWidgetFooterBg(ctx: Context, appWidgetId: Int, v: Int) =
+        prefs(ctx).edit().putInt("footer_bg_$appWidgetId", v).apply()
+
+    // 0 = auto from dark mode
+    fun getWidgetFontColor(ctx: Context, appWidgetId: Int): Int =
+        prefs(ctx).getInt("font_color_$appWidgetId", 0)
+    fun setWidgetFontColor(ctx: Context, appWidgetId: Int, v: Int) =
+        prefs(ctx).edit().putInt("font_color_$appWidgetId", v).apply()
+
+    // stored as integer percent: 85, 100, 120, 140
+    fun getWidgetTextScalePct(ctx: Context, appWidgetId: Int): Int =
+        prefs(ctx).getInt("text_scale_$appWidgetId", 100)
+    fun setWidgetTextScalePct(ctx: Context, appWidgetId: Int, v: Int) =
+        prefs(ctx).edit().putInt("text_scale_$appWidgetId", v).apply()
 
     // ── Per-widget cache ───────────────────────────────────────────────────────
 
