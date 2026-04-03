@@ -762,7 +762,9 @@ class MainActivity : Activity() {
     private fun formatInterval(minutes: Int) = if (minutes == 1) "1 minute" else "$minutes minutes"
 
     private fun parseStatusPageUrl(input: String): Pair<String, String> {
-        val trimmed = input.trim().trimEnd('/')
+        var trimmed = input.trim().trimEnd('/')
+        if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://"))
+            trimmed = "http://$trimmed"
         val m = Regex("""^(https?://[^/]+)/(?:status|api/status-page)/([A-Za-z0-9][A-Za-z0-9_-]*)""")
             .find(trimmed)
         if (m != null) return m.groupValues[1] to m.groupValues[2]
