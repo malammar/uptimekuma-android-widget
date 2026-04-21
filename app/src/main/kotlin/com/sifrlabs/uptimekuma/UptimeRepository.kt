@@ -1,16 +1,12 @@
 package com.sifrlabs.uptimekuma
 
 import android.content.Context
-import android.net.ConnectivityManager
 import android.util.Base64
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
 class UptimeRepository(private val context: Context) {
-
-    private val connectivityManager =
-        context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
     fun fetchGroups(profile: Profile, showGroupMonitors: Boolean = false): List<MonitorGroup> {
         val hostname = profile.hostname
@@ -76,9 +72,7 @@ class UptimeRepository(private val context: Context) {
         }
 
     private fun openConn(url: String, profile: Profile, accept: String): HttpURLConnection {
-        val network = connectivityManager.activeNetwork
-        val conn = (if (network != null) network.openConnection(URL(url))
-                    else URL(url).openConnection()) as HttpURLConnection
+        val conn = URL(url).openConnection() as HttpURLConnection
         conn.connectTimeout = 10_000
         conn.readTimeout    = 15_000
         conn.requestMethod  = "GET"
