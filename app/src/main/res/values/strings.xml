@@ -3,6 +3,8 @@
     <string name="app_name">UptimeKuma Widget</string>
     <string name="widget_title">Home Services</string>
     <string name="widget_description">Displays Uptime Kuma monitor statuses</string>
+    <string name="compact_widget_label">Status (1×1)</string>
+    <string name="compact_widget_description">Single dot showing the overall status of all monitors</string>
     <string name="loading">Loading…</string>
     <string name="error_loading">Failed to load</string>
     <string name="hint_hostname">https://uptime-kuma.example.com</string>

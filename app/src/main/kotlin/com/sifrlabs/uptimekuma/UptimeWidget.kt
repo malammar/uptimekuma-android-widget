@@ -18,6 +18,13 @@ class UptimeWidget : AppWidgetProvider() {
         const val ACTION_REFRESH      = "com.sifrlabs.uptimekuma.ACTION_REFRESH"
         const val ACTION_ALARM_TICK   = "com.sifrlabs.uptimekuma.ACTION_ALARM_TICK"
 
+        // Widget ids across both providers (scrollable list + 1x1 compact)
+        fun allWidgetIds(context: Context): IntArray {
+            val manager = AppWidgetManager.getInstance(context)
+            return manager.getAppWidgetIds(ComponentName(context, UptimeWidget::class.java)) +
+                   manager.getAppWidgetIds(ComponentName(context, CompactUptimeWidget::class.java))
+        }
+
         fun triggerUpdate(context: Context, widgetIds: IntArray? = null) {
             Log.d(TAG, "triggerUpdate called")
             try {
@@ -102,6 +109,9 @@ class UptimeWidget : AppWidgetProvider() {
 
     override fun onDisabled(context: Context) {
         super.onDisabled(context)
-        cancelAlarm(context)
+        val manager = AppWidgetManager.getInstance(context)
+        if (manager.getAppWidgetIds(ComponentName(context, CompactUptimeWidget::class.java)).isEmpty()) {
+            cancelAlarm(context)
+        }
     }
 }

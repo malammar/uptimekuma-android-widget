@@ -68,9 +68,7 @@ class MainActivity : Activity() {
             val ok = intent.getBooleanExtra(WidgetUpdateService.EXTRA_SUCCESS, false)
             progressBar?.visibility = View.GONE
             refreshBtn?.apply { text = "↻"; isEnabled = true; setTextColor(cMuted) }
-            val hasWidgets = android.appwidget.AppWidgetManager.getInstance(context)
-                .getAppWidgetIds(android.content.ComponentName(context, UptimeWidget::class.java))
-                .isNotEmpty()
+            val hasWidgets = UptimeWidget.allWidgetIds(context).isNotEmpty()
             if (!hasWidgets) {
                 statusText?.text = "No widgets created yet. Add one to your home screen first!"
                 statusText?.setTextColor(cMuted)
@@ -408,9 +406,7 @@ class MainActivity : Activity() {
             isClickable = true
             isFocusable = true
             setOnClickListener {
-                val hasWidgets = android.appwidget.AppWidgetManager.getInstance(this@MainActivity)
-                    .getAppWidgetIds(android.content.ComponentName(this@MainActivity, UptimeWidget::class.java))
-                    .isNotEmpty()
+                val hasWidgets = UptimeWidget.allWidgetIds(this@MainActivity).isNotEmpty()
                 if (!hasWidgets) {
                     statusText?.text = "No widgets created yet. Add one to your home screen first!"
                     statusText?.setTextColor(cMuted)
@@ -440,8 +436,7 @@ class MainActivity : Activity() {
         root.addView(addInstanceRow())
 
         // ── Active widgets ────────────────────────────────────────────────────
-        val widgetIds = android.appwidget.AppWidgetManager.getInstance(this)
-            .getAppWidgetIds(android.content.ComponentName(this, UptimeWidget::class.java))
+        val widgetIds = UptimeWidget.allWidgetIds(this)
         data class WidgetEntry(val id: Int, val profileName: String, val bgColor: Int)
         val validWidgets = mutableListOf<WidgetEntry>()
         for (wid in widgetIds) {
@@ -661,8 +656,7 @@ class MainActivity : Activity() {
                 .setMessage("This will remove the instance and disconnect any widgets using it.")
                 .setPositiveButton("Delete") { _, _ ->
                     Prefs.deleteProfile(this@MainActivity, profile.id)
-                    val manager = android.appwidget.AppWidgetManager.getInstance(this@MainActivity)
-                    manager.getAppWidgetIds(android.content.ComponentName(this@MainActivity, UptimeWidget::class.java))
+                    UptimeWidget.allWidgetIds(this@MainActivity)
                         .filter { Prefs.getProfileIdForWidget(this@MainActivity, it) == profile.id }
                         .forEach { Prefs.removeWidget(this@MainActivity, it) }
                     showProfileManager()

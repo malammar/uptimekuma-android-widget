@@ -9,6 +9,7 @@ import android.net.Uri
 import android.os.IBinder
 import android.util.Log
 import android.widget.RemoteViews
+import org.json.JSONArray
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -25,8 +26,10 @@ class WidgetUpdateService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "WidgetUpdateService started")
         Thread {
-            val manager  = AppWidgetManager.getInstance(this)
-            val allIds   = manager.getAppWidgetIds(ComponentName(this, UptimeWidget::class.java))
+            val manager    = AppWidgetManager.getInstance(this)
+            val listIds    = manager.getAppWidgetIds(ComponentName(this, UptimeWidget::class.java))
+            val compactIds = manager.getAppWidgetIds(ComponentName(this, CompactUptimeWidget::class.java))
+            val allIds     = listIds + compactIds
             val requested = intent?.getIntArrayExtra(EXTRA_WIDGET_IDS)
             val targetIds = if (requested != null && requested.isNotEmpty())
                 requested.filter { it in allIds }.toIntArray()
@@ -54,9 +57,11 @@ class WidgetUpdateService : Service() {
                         val groups = UptimeRepository(this).fetchGroups(profile, showGroupMonitors)
                         val json   = groupsToJson(groups)
                         widgetIds.forEach { Prefs.saveCachedGroups(this, it, json) }
-                        widgetIds.toIntArray().let { ids ->
-                            ids.forEach { manager.updateAppWidget(it, buildRemoteViews(it, success = true)) }
-                            manager.notifyAppWidgetViewDataChanged(ids, R.id.monitor_container)
+                        widgetIds.forEach {
+                            manager.updateAppWidget(it, buildViews(it, it in compactIds, success = true))
+                        }
+                        widgetIds.filter { it !in compactIds }.toIntArray().let { ids ->
+                            if (ids.isNotEmpty()) manager.notifyAppWidgetViewDataChanged(ids, R.id.monitor_container)
                         }
                         success    = true
                         anySuccess = true
@@ -66,7 +71,9 @@ class WidgetUpdateService : Service() {
                         if (attempt < 3) Thread.sleep(2000)
                     }
                 }
-                if (!success) widgetIds.forEach { manager.updateAppWidget(it, buildRemoteViews(it, success = false)) }
+                if (!success) widgetIds.forEach {
+                    manager.updateAppWidget(it, buildViews(it, it in compactIds, success = false))
+                }
             }
 
             sendBroadcast(Intent(ACTION_UPDATE_COMPLETE).apply {
@@ -76,6 +83,60 @@ class WidgetUpdateService : Service() {
             stopSelf(startId)
         }.start()
         return START_NOT_STICKY
+    }
+
+    private fun buildViews(appWidgetId: Int, isCompact: Boolean, success: Boolean): RemoteViews =
+        if (isCompact) buildCompactRemoteViews(appWidgetId) else buildRemoteViews(appWidgetId, success)
+
+    private fun buildCompactRemoteViews(appWidgetId: Int): RemoteViews {
+        val views = RemoteViews(packageName, R.layout.widget_compact_layout)
+        views.setInt(R.id.compact_root, "setBackgroundColor", Prefs.getWidgetBgColor(this, appWidgetId))
+        views.setImageViewResource(R.id.compact_status, when (overallStatus(appWidgetId)) {
+            MonitorStatus.STATUS_DOWN        -> R.drawable.dot_down
+            MonitorStatus.STATUS_PENDING     -> R.drawable.dot_pending
+            MonitorStatus.STATUS_MAINTENANCE -> R.drawable.dot_maintenance
+            MonitorStatus.STATUS_UP          -> R.drawable.dot_up
+            else                             -> R.drawable.dot_unknown
+        })
+
+        // Tap opens the status page, same as the list widget's header
+        val profile  = Prefs.getProfileIdForWidget(this, appWidgetId)?.let { Prefs.getProfile(this, it) }
+        val hostname = profile?.hostname ?: ""
+        views.setOnClickPendingIntent(
+            R.id.compact_root,
+            PendingIntent.getActivity(
+                this, appWidgetId,
+                Intent(Intent.ACTION_VIEW, Uri.parse(hostname.ifEmpty { "https://uptime.kuma.pet" })),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        )
+        return views
+    }
+
+    // Worst current status across all monitors in the widget's cached data,
+    // or null when there is no cache yet.
+    private fun overallStatus(appWidgetId: Int): Int? {
+        val json = Prefs.cachedGroupsJson(this, appWidgetId) ?: return null
+        return try {
+            val statuses = mutableListOf<Int>()
+            val arr = JSONArray(json)
+            for (i in 0 until arr.length()) {
+                val monitors = arr.getJSONObject(i).getJSONArray("monitors")
+                for (j in 0 until monitors.length()) {
+                    statuses.add(monitors.getJSONObject(j).getInt("status"))
+                }
+            }
+            when {
+                statuses.isEmpty()                                     -> null
+                statuses.any { it == MonitorStatus.STATUS_DOWN }        -> MonitorStatus.STATUS_DOWN
+                statuses.any { it == MonitorStatus.STATUS_PENDING }     -> MonitorStatus.STATUS_PENDING
+                statuses.any { it == MonitorStatus.STATUS_MAINTENANCE } -> MonitorStatus.STATUS_MAINTENANCE
+                else                                                    -> MonitorStatus.STATUS_UP
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to parse cached groups for compact widget $appWidgetId: ${e.message}")
+            null
+        }
     }
 
     private fun buildRemoteViews(appWidgetId: Int, success: Boolean): RemoteViews {
