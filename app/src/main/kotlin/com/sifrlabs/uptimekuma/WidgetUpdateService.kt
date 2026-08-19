@@ -99,9 +99,27 @@ class WidgetUpdateService : Service() {
             else                             -> R.drawable.dot_unknown
         })
 
-        // Tap opens the status page, same as the list widget's header
+        // Instance name below the dot, honoring the widget's font/theme settings
         val profile  = Prefs.getProfileIdForWidget(this, appWidgetId)?.let { Prefs.getProfile(this, it) }
         val hostname = profile?.hostname ?: ""
+        val name     = profile?.name ?: ""
+        if (name.isEmpty()) {
+            views.setViewVisibility(R.id.compact_name, android.view.View.GONE)
+        } else {
+            val darkMode = when (Prefs.getWidgetTheme(this, appWidgetId)) {
+                0    -> true
+                1    -> false
+                else -> (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                        android.content.res.Configuration.UI_MODE_NIGHT_YES
+            }
+            val fontPref = Prefs.getWidgetFontColor(this, appWidgetId)
+            val color    = if (fontPref == 0) (if (darkMode) 0xFFFFFFFF.toInt() else 0xFF1A1A2E.toInt()) else fontPref
+            val scale    = Prefs.getWidgetTextScalePct(this, appWidgetId) / 100f
+            views.setViewVisibility(R.id.compact_name, android.view.View.VISIBLE)
+            views.setTextViewText(R.id.compact_name, name)
+            views.setTextColor(R.id.compact_name, color)
+            views.setTextViewTextSize(R.id.compact_name, android.util.TypedValue.COMPLEX_UNIT_SP, 9f * scale)
+        }
         views.setOnClickPendingIntent(
             R.id.compact_root,
             PendingIntent.getActivity(

@@ -1,16 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/compact_root"
+    android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:gravity="center"
     android:background="@color/widget_background">
 
     <ImageView
         android:id="@+id/compact_status"
-        android:layout_width="32dp"
-        android:layout_height="32dp"
-        android:layout_gravity="center"
+        android:layout_width="26dp"
+        android:layout_height="26dp"
         android:src="@drawable/dot_unknown"
         android:contentDescription="@string/compact_widget_description" />
 
-</FrameLayout>
+    <TextView
+        android:id="@+id/compact_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:textSize="9sp"
+        android:textColor="@color/text_primary"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp"
+        android:paddingTop="3dp" />
+
+</LinearLayout>
