@@ -12,14 +12,14 @@ val localProps = Properties().apply {
 
 android {
     namespace = "com.sifrlabs.uptimekuma"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.sifrlabs.uptimekuma"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 7
-        versionName = "1.5"
+        targetSdk = 36
+        versionCode = 8
+        versionName = "1.5.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
