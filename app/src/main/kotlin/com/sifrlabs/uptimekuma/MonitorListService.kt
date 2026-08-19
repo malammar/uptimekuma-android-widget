@@ -38,6 +38,7 @@ class MonitorListFactory(
     private companion object {
         const val TYPE_HEADER  = 0
         const val TYPE_MONITOR = 1
+        const val MAX_BARS = 24
         const val TAG = "UptimeWidget"
     }
 
@@ -128,13 +129,17 @@ class MonitorListFactory(
         val h = (14 * density).toInt().coerceAtLeast(1)
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         if (history.isEmpty()) return bmp
+        // Uptime Kuma can return 50-100 heartbeats; squeezed into 72dp each bar
+        // ends up ~1px of antialiased rounded rect and the strip looks washed
+        // out. Only draw the most recent beats so bars stay solid.
+        val bars   = history.takeLast(MAX_BARS)
         val canvas = Canvas(bmp)
-        val count  = history.size
+        val count  = bars.size
         val gap    = density * 0.8f
         val barW   = (w - gap * (count - 1)) / count
         val radius = density * 0.8f
         val paint  = Paint(Paint.ANTI_ALIAS_FLAG)
-        history.forEachIndexed { i, status ->
+        bars.forEachIndexed { i, status ->
             paint.color = when (status) {
                 MonitorStatus.STATUS_UP          -> 0xFF4CAF50.toInt()
                 MonitorStatus.STATUS_DOWN        -> 0xFFF44336.toInt()
