@@ -1,8 +1,11 @@
 package com.sifrlabs.uptimekuma
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
 import android.util.Base64
 import org.json.JSONObject
+import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -66,13 +69,23 @@ class UptimeRepository(private val context: Context) {
         return groups
     }
 
+    // System routing first (respects VPNs like Tailscale); if that fails, retry bound
+    // to the active network to work around OxygenOS background DNS restrictions.
     private fun get(url: String, profile: Profile): String =
-        openConn(url, profile, "application/json").let { conn ->
-            try { conn.inputStream.bufferedReader().readText() } finally { conn.disconnect() }
+        try {
+            read(openConn(url, profile, "application/json", network = null))
+        } catch (e: IOException) {
+            val connectivityManager =
+                context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val network = connectivityManager.activeNetwork ?: throw e
+            read(openConn(url, profile, "application/json", network))
         }
 
-    private fun openConn(url: String, profile: Profile, accept: String): HttpURLConnection {
-        val conn = URL(url).openConnection() as HttpURLConnection
+    private fun read(conn: HttpURLConnection): String =
+        try { conn.inputStream.bufferedReader().readText() } finally { conn.disconnect() }
+
+    private fun openConn(url: String, profile: Profile, accept: String, network: Network?): HttpURLConnection {
+        val conn = (network?.openConnection(URL(url)) ?: URL(url).openConnection()) as HttpURLConnection
         conn.connectTimeout = 10_000
         conn.readTimeout    = 15_000
         conn.requestMethod  = "GET"
