@@ -91,13 +91,7 @@ class WidgetUpdateService : Service() {
     private fun buildCompactRemoteViews(appWidgetId: Int): RemoteViews {
         val views = RemoteViews(packageName, R.layout.widget_compact_layout)
         views.setInt(R.id.compact_root, "setBackgroundColor", Prefs.getWidgetBgColor(this, appWidgetId))
-        views.setImageViewResource(R.id.compact_status, when (overallStatus(appWidgetId)) {
-            MonitorStatus.STATUS_DOWN        -> R.drawable.dot_down
-            MonitorStatus.STATUS_PENDING     -> R.drawable.dot_pending
-            MonitorStatus.STATUS_MAINTENANCE -> R.drawable.dot_maintenance
-            MonitorStatus.STATUS_UP          -> R.drawable.dot_up
-            else                             -> R.drawable.dot_unknown
-        })
+        views.setImageViewResource(R.id.compact_status, statusDotRes(appWidgetId))
 
         // Instance name below the dot, honoring the widget's font/theme settings
         val profile  = Prefs.getProfileIdForWidget(this, appWidgetId)?.let { Prefs.getProfile(this, it) }
@@ -129,6 +123,14 @@ class WidgetUpdateService : Service() {
             )
         )
         return views
+    }
+
+    private fun statusDotRes(appWidgetId: Int): Int = when (overallStatus(appWidgetId)) {
+        MonitorStatus.STATUS_DOWN        -> R.drawable.dot_down
+        MonitorStatus.STATUS_PENDING     -> R.drawable.dot_pending
+        MonitorStatus.STATUS_MAINTENANCE -> R.drawable.dot_maintenance
+        MonitorStatus.STATUS_UP          -> R.drawable.dot_up
+        else                             -> R.drawable.dot_unknown
     }
 
     // Worst current status across all monitors in the widget's cached data,
@@ -225,6 +227,7 @@ class WidgetUpdateService : Service() {
         val profile   = profileId?.let { Prefs.getProfile(this, it) }
         val hostname  = profile?.hostname ?: ""
         views.setTextViewText(R.id.widget_header, profile?.name ?: getString(R.string.widget_title))
+        views.setImageViewResource(R.id.header_status_dot, statusDotRes(appWidgetId))
         views.setOnClickPendingIntent(
             R.id.widget_header,
             PendingIntent.getActivity(

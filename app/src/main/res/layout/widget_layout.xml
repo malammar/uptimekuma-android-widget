@@ -18,6 +18,14 @@
         android:paddingTop="6dp"
         android:paddingBottom="4dp">
 
+        <ImageView
+            android:id="@+id/header_status_dot"
+            android:layout_width="10dp"
+            android:layout_height="10dp"
+            android:layout_marginStart="6dp"
+            android:src="@drawable/dot_unknown"
+            android:contentDescription="" />
+
         <TextView
             android:id="@+id/widget_header"
             android:layout_width="0dp"
